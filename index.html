@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Estate Price Predictor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 font-sans min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+
+    <div class="max-w-xl w-full space-y-8 bg-white p shadow-xl rounded-2xl border border-slate-100 p-8">
+        <div>
+            <h2 class="text-center text-3xl font-extrabold text-slate-900 tracking-tight">
+                House Price Valuator
+            </h2>
+            <p class="mt-2 text-center text-sm text-slate-500">
+                Provide core real estate specifications to evaluate estimated baseline structural valuation.
+            </p>
+        </div>
+        
+        <form id="predictionForm" class="mt-8 space-y-6">
+            <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                
+                <div class="sm:col-span-2">
+                    <label for="tsp_en" class="block text-sm font-medium text-slate-700">Township Region</label>
+                    <select id="tsp_en" name="tsp_en" required class="mt-1 block w-full rounded-md border border-slate-300 bg-white py-2 px-3 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-slate-800">
+                        <option value="">Select geographic location...</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="bedroom" class="block text-sm font-medium text-slate-700">Bedrooms</label>
+                    <input type="number" name="bedroom" id="bedroom" min="0" value="2" required class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-slate-800">
+                </div>
+
+                <div>
+                    <label for="bathroom" class="block text-sm font-medium text-slate-700">Bathrooms</label>
+                    <input type="number" name="bathroom" id="bathroom" min="0" value="1" required class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-slate-800">
+                </div>
+
+                <div>
+                    <label for="aircorn" class="block text-sm font-medium text-slate-700">Air Conditioners</label>
+                    <input type="number" name="aircorn" id="aircorn" min="0" value="1" required class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-slate-800">
+                </div>
+
+                <div>
+                    <label for="floor" class="block text-sm font-medium text-slate-700">Floor Level</label>
+                    <input type="number" name="floor" id="floor" value="1" required class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-slate-800">
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label for="overhead_tank" class="block text-sm font-medium text-slate-700">Overhead Tank (Units/Status)</label>
+                    <input type="number" name="overhead_tank" id="overhead_tank" value="1" required class="mt-1 block w-full rounded-md border border-slate-300 py-2 px-3 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm text-slate-800">
+                </div>
+            </div>
+
+            <div>
+                <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                    Calculate Valuation Matrix
+                </button>
+            </div>
+        </form>
+
+        <div id="resultBox" class="hidden mt-6 p-4 rounded-xl border text-center transition duration-150 ease-in-out">
+            <p id="resultTitle" class="text-xs uppercase font-semibold tracking-wider text-slate-400"></p>
+            <p id="resultValue" class="text-3xl font-black mt-1 text-slate-800"></p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = "http://127.0.0.1:8000";
+        const form = document.getElementById('predictionForm');
+        const townshipSelect = document.getElementById('tsp_en');
+        const resultBox = document.getElementById('resultBox');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultValue = document.getElementById('resultValue');
+
+        // Dynamic Initialization: Hydrate Select Menu mapping from API definitions
+        async function loadTownships() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/townships`);
+                if (!response.ok) throw new Error("Metadata pipeline sync failure.");
+                const data = await response.json();
+                
+                data.townships.forEach(township => {
+                    const option = document.createElement('option');
+                    option.value = township;
+                    option.textContent = township;
+                    townshipSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error("Initialization error:", err);
+                // Fallback option mapping configuration safety injection
+                const fallback = ["Bahan", "Hlaing", "Kamaryut", "South Okkalapa"];
+                fallback.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t; opt.textContent = t; townshipSelect.appendChild(opt);
+                });
+            }
+        }
+
+        // Form Submit Interception Routine
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Set Loading state visuals
+            resultBox.classList.remove('hidden', 'bg-green-50', 'border-green-200', 'bg-red-50', 'border-red-200');
+            resultBox.classList.add('bg-slate-50', 'border-slate-200');
+            resultTitle.textContent = "Processing Async Queue...";
+            resultValue.textContent = "Calculating...";
+
+            // Structural Extraction via FormData Mapping to strict numeric representations
+            const formData = new FormData(form);
+            const payload = {
+                tsp_en: formData.get('tsp_en'),
+                bedroom: parseFloat(formData.get('bedroom')),
+                bathroom: parseFloat(formData.get('bathroom')),
+                aircorn: parseFloat(formData.get('aircorn')),
+                floor: parseFloat(formData.get('floor')),
+                overhead_tank: parseFloat(formData.get('overhead_tank'))
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/predict`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) throw new Error(result.detail || "Server communication execution failure.");
+
+                // Render Valuation Target Output Display
+                resultBox.classList.replace('bg-slate-50', 'bg-green-50');
+                resultBox.classList.replace('border-slate-200', 'border-green-200');
+                resultTitle.textContent = "Estimated Value Baseline Matrix";
+                resultValue.textContent = `$${result.predicted_price.toLocaleString()}`;
+                resultValue.classList.replace('text-red-600', 'text-slate-800');
+
+            } catch (error) {
+                // Handle exceptions or service downtime elegantly
+                resultBox.classList.remove('bg-slate-50');
+                resultBox.classList.add('bg-red-50', 'border-red-200');
+                resultTitle.textContent = "System Runtime Exception Exception";
+                resultValue.textContent = "Inference Offline";
+                resultValue.classList.add('text-red-600');
+                console.error("Prediction runtime block failure:", error);
+            }
+        });
+
+        // Instantiate Component Engine Lifecycle
+        loadTownships();
+    </script>
+</body>
+</html>
